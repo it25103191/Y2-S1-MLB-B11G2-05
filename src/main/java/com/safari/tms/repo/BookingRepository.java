@@ -76,6 +76,8 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     long countByStatus(BookingStatus status);
 
+    long countBySafariPackageId(Long packageId);
+
     @Query("select count(b) from Booking b where b.tripDate >= :from and b.status in :statuses")
     long countUpcoming(@Param("from") LocalDate from, @Param("statuses") Collection<BookingStatus> statuses);
 
