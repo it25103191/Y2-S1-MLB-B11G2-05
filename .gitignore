@@ -31,3 +31,25 @@ build/
 
 ### VS Code ###
 .vscode/
+# Dependencies and build output
+frontend/node_modules/
+frontend/dist/
+backend/target/
+
+# IDE and local tool settings
+.idea/
+*.iml
+.vscode/
+.claude/
+
+# Python
+__pycache__/
+*.pyc
+
+# Local secrets and personal notes
+.env
+Claude outputs/
+
+# OS files
+.DS_Store
+Thumbs.db
