@@ -64,12 +64,28 @@ public class PackageService {
         return PackageView.of(packages.save(pkg));
     }
 
-    /** Soft delete - packages are never hard-deleted because bookings reference them. */
+    /** Deactivating hides a package from browsing without touching the bookings that reference it. */
     @Transactional
     public PackageView setActive(Long id, boolean active) {
         SafariPackage pkg = require(id);
         pkg.setActive(active);
         return PackageView.of(packages.save(pkg));
+    }
+
+    /**
+     * Hard delete, only for a package nobody has ever booked. Once bookings reference it the
+     * package must be deactivated instead so their history stays intact.
+     */
+    @Transactional
+    public void delete(Long id) {
+        SafariPackage pkg = require(id);
+        long used = bookings.countBySafariPackageId(id);
+        if (used > 0) {
+            throw ApiException.conflict("'" + pkg.getName() + "' has " + used
+                    + " booking(s), so it can't be deleted. Deactivate it instead to stop new bookings"
+                    + " while keeping their history.");
+        }
+        packages.delete(pkg);
     }
 
     @Transactional(readOnly = true)

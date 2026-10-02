@@ -55,8 +55,9 @@ public class PackageController {
     @GetMapping("/{id}/quote")
     public QuoteView quote(@PathVariable Long id,
                            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-                           @RequestParam(defaultValue = "1") int participants) {
-        return bookingService.quote(id, date, participants);
+                           @RequestParam(defaultValue = "1") int participants,
+                           @RequestParam(required = false) Long excludeBookingId) {
+        return bookingService.quote(id, date, participants, excludeBookingId);
     }
 
     @PostMapping
@@ -69,6 +70,14 @@ public class PackageController {
     @PreAuthorize(Roles.CATALOGUE_MANAGERS)
     public PackageView update(@PathVariable Long id, @Valid @RequestBody PackageRequest request) {
         return packageService.update(id, request);
+    }
+
+    /** Only succeeds for a package that has never been booked; otherwise deactivate it. */
+    @DeleteMapping("/{id}")
+    @PreAuthorize(Roles.CATALOGUE_MANAGERS)
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        packageService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{id}/active")

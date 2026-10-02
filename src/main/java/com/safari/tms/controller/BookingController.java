@@ -3,6 +3,7 @@ package com.safari.tms.web;
 import com.safari.tms.domain.User;
 import com.safari.tms.domain.enums.Role;
 import com.safari.tms.dto.BookingDtos.BookingRequest;
+import com.safari.tms.dto.BookingDtos.BookingUpdateRequest;
 import com.safari.tms.dto.BookingDtos.BookingView;
 import com.safari.tms.dto.BookingDtos.CancelRequest;
 import com.safari.tms.dto.BookingDtos.StatusChangeRequest;
@@ -74,6 +75,19 @@ public class BookingController {
     public ResponseEntity<BookingView> create(@Valid @RequestBody BookingRequest request) {
         User customer = authService.requireCurrentUser();
         return ResponseEntity.status(HttpStatus.CREATED).body(bookingService.create(customer, request));
+    }
+
+    /** Owner or staff may change a pending booking. */
+    @PutMapping("/{id}")
+    public BookingView update(@PathVariable Long id, @Valid @RequestBody BookingUpdateRequest request) {
+        return bookingService.update(id, authService.requireCurrentUser(), request);
+    }
+
+    /** Owner or staff may delete a pending booking that has nothing attached to it. */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        bookingService.delete(id, authService.requireCurrentUser());
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{id}/cancel")
