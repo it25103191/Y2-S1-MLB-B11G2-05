@@ -1,4 +1,4 @@
-package com.safari.tms.web;
+package com.safari.tms.controller;
 
 import com.safari.tms.dto.FinanceDtos.RefundDecisionRequest;
 import com.safari.tms.dto.FinanceDtos.RefundQuoteView;
