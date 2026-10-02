@@ -45,6 +45,5 @@ public interface RefundRepository extends JpaRepository<Refund, Long> {
     boolean existsByBookingIdAndStatusIn(Long bookingId, List<RefundStatus> statuses);
 
     long countByStatus(RefundStatus status);
-
-    long countByBookingId(Long bookingId);
 }
+
