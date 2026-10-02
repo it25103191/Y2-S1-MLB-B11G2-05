@@ -1,4 +1,4 @@
-package com.safari.tms.services;
+package com.safari.tms.service;
 
 import com.safari.tms.domain.Vehicle;
 import com.safari.tms.domain.enums.VehicleStatus;

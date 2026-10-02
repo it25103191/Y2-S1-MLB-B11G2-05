@@ -1,4 +1,4 @@
-package com.safari.tms.services;
+package com.safari.tms.service;
 
 import com.safari.tms.domain.Assignment;
 import com.safari.tms.domain.Guide;
