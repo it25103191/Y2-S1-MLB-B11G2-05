@@ -4,7 +4,6 @@ import com.safari.tms.domain.*;
 import com.safari.tms.domain.enums.*;
 import com.safari.tms.repo.*;
 import com.safari.tms.service.ReferenceGenerator;
-import com.safari.tms.service.ReportService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -14,30 +13,17 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Populates a realistic demo dataset the first time the application starts against an empty
- * database. Every screen therefore has something to show without any manual data entry.
- */
 @Component
 public class DataSeeder implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);
 
-    /** Shared demo password for every seeded account. */
     public static final String DEMO_PASSWORD = "Password123!";
-
-    /** Its presence marks a database that already has the Sri Lankan catalogue. */
-    static final String FLAGSHIP_PARK = "Yala National Park";
-
-    /** Starting LKR rate; finance keeps it current from the Payments screen. */
-    static final BigDecimal DEFAULT_LKR_RATE = new BigDecimal("300.0000");
 
     private final AppProperties props;
     private final PasswordEncoder encoder;
@@ -56,10 +42,6 @@ public class DataSeeder implements ApplicationRunner {
     private final PermitRepository permits;
     private final PaymentRepository paymentsRepo;
     private final RefundRepository refundsRepo;
-    private final ReplyTemplateRepository replyTemplates;
-    private final KpiTargetRepository kpiTargets;
-    private final ExchangeRateRepository exchangeRates;
-    private final ReportService reportService;
 
     public DataSeeder(AppProperties props, PasswordEncoder encoder, ReferenceGenerator refs,
                       UserRepository users, ParkRepository parks, SafariPackageRepository packages,
@@ -67,9 +49,7 @@ public class DataSeeder implements ApplicationRunner {
                       AssignmentRepository assignments, ComplaintRepository complaints,
                       CommunicationLogRepository communications,
                       NotificationLogRepository notificationLogs, PermitRepository permits,
-                      PaymentRepository paymentsRepo, RefundRepository refundsRepo,
-                      ReplyTemplateRepository replyTemplates, KpiTargetRepository kpiTargets,
-                      ExchangeRateRepository exchangeRates, ReportService reportService) {
+                      PaymentRepository paymentsRepo, RefundRepository refundsRepo) {
         this.props = props;
         this.encoder = encoder;
         this.refs = refs;
@@ -86,10 +66,6 @@ public class DataSeeder implements ApplicationRunner {
         this.permits = permits;
         this.paymentsRepo = paymentsRepo;
         this.refundsRepo = refundsRepo;
-        this.replyTemplates = replyTemplates;
-        this.kpiTargets = kpiTargets;
-        this.exchangeRates = exchangeRates;
-        this.reportService = reportService;
     }
 
     @Override
@@ -99,36 +75,11 @@ public class DataSeeder implements ApplicationRunner {
             log.info("Seeding disabled (safari.seed.enabled=false)");
             return;
         }
-        boolean existing = users.count() > 0;
-        if (existing) {
-            log.info("Core seed skipped - {} user(s) already present", users.count());
-        } else {
-            seedCore();
+        if (users.count() > 0) {
+            log.info("Seed skipped - {} user(s) already present", users.count());
+            return;
         }
 
-        // Databases created before the Ceylon Trails rebrand hold an African catalogue. Add the Sri
-        // Lankan parks and packages alongside it; existing records are never changed or removed.
-        if (existing && parks.findAll().stream().noneMatch(p -> FLAGSHIP_PARK.equalsIgnoreCase(p.getName()))) {
-            List<Park> added = seedParks();
-            List<SafariPackage> addedPackages = seedPackages(added);
-            log.info("Added the Sri Lankan catalogue: {} parks, {} packages", added.size(), addedPackages.size());
-        }
-        if (exchangeRates.count() == 0) {
-            exchangeRates.save(new ExchangeRate(Currency.LKR, DEFAULT_LKR_RATE));
-            log.info("Seeded exchange rate: 1 USD = {} LKR", DEFAULT_LKR_RATE);
-        }
-
-        // Modules added after the first release seed on their own, so a database created by an
-        // earlier build still gets their demo data the first time the new version starts.
-        if (replyTemplates.count() == 0) {
-            seedReplyTemplates();
-        }
-        if (kpiTargets.count() == 0) {
-            seedKpiTargets();
-        }
-    }
-
-    private void seedCore() {
         log.info("Seeding demo dataset...");
         List<User> people = seedUsers();
         List<Park> parkList = seedParks();
@@ -151,159 +102,15 @@ public class DataSeeder implements ApplicationRunner {
                 paymentsRepo.count(), refundsRepo.count());
     }
 
-    /* ------------------------------------------------------ Reply templates */
-
-    private void seedReplyTemplates() {
-        User author = users.findByEmailIgnoreCase("relations@sundara.test").orElse(null);
-
-        template(author, "Acknowledge a new case", null,
-                "We're looking into {{caseReference}}",
-                "Hi {{customerName}},\n\nThanks for getting in touch. Your case {{caseReference}} is now with"
-                        + " our customer relations team and we will come back to you within one working day."
-                        + "\n\nKind regards,\nCeylon Trails Customer Relations",
-                true, 14);
-
-        template(author, "Vehicle fault apology", ComplaintCategory.VEHICLE,
-                "Sorry about your vehicle on {{bookingReference}}",
-                "Hi {{customerName}},\n\nI'm sorry the vehicle let you down on {{bookingReference}}. I have"
-                        + " passed the details to our fleet coordinator so the fault is fixed before its next"
-                        + " departure, and I will confirm what we can offer to make up for it.",
-                true, 5);
-
-        template(author, "Refund on its way", ComplaintCategory.PAYMENT,
-                "Your refund for {{bookingReference}}",
-                "Hi {{customerName}},\n\nYour refund for booking {{bookingReference}} has been approved by"
-                        + " our finance team. It should reach your account within five working days.",
-                true, 8);
-
-        template(author, "Dietary requirements noted", ComplaintCategory.PARK_EXPERIENCE,
-                "Dietary requirements for {{bookingReference}}",
-                "Hi {{customerName}},\n\nThank you for letting us know. I have briefed the camp kitchen for"
-                        + " {{bookingReference}} so every meal meets your requirements.",
-                true, 3);
-
-        template(author, "Booking change confirmed", ComplaintCategory.BOOKING,
-                "Changes to {{bookingReference}} confirmed",
-                "Hi {{customerName}},\n\nThe change you asked for on booking {{bookingReference}} has been"
-                        + " made. You can see the updated details under My Bookings.",
-                true, 2);
-
-        template(author, "Lost property search", ComplaintCategory.OTHER,
-                "Lost property ({{caseReference}})",
-                "Hi {{customerName}},\n\nWe searched the vehicle and checked the lost-property log but have"
-                        + " not found the item yet. We will contact you straight away if it turns up.",
-                false, 1);
-
-        log.info("Seeded {} reply templates", replyTemplates.count());
-    }
-
-    private void template(User author, String title, ComplaintCategory category, String subject,
-                          String body, boolean active, int usage) {
-        ReplyTemplate t = new ReplyTemplate();
-        t.setTitle(title);
-        t.setCategory(category);
-        t.setSubject(subject);
-        t.setBody(body);
-        t.setActive(active);
-        t.setUsageCount(usage);
-        t.setCreatedBy(author);
-        replyTemplates.save(t);
-    }
-
-    /* ---------------------------------------------------------- KPI targets */
-
-    /**
-     * Sets targets for the three months before this one, this month and the next two. Values are
-     * derived from the actual figures so the demo always shows a mix of Achieved, Missed,
-     * In progress and Upcoming, whatever date the database is seeded on.
-     */
-    private void seedKpiTargets() {
-        User owner = users.findByEmailIgnoreCase("ops@sundara.test").orElse(null);
-        ReportService.Snapshot data = reportService.snapshot();
-        YearMonth now = YearMonth.now();
-
-        for (int offset = -3; offset <= 2; offset++) {
-            YearMonth month = now.plusMonths(offset);
-            // Three and one months ago were hit; two months ago was missed.
-            boolean hit = offset == -3 || offset == -1;
-
-            BigDecimal revenue = reportService.actual(KpiMetric.REVENUE, List.of(month), data);
-            BigDecimal bookingsActual = reportService.actual(KpiMetric.BOOKINGS, List.of(month), data);
-
-            kpiTarget(owner, month, KpiMetric.REVENUE, revenueTarget(revenue, offset, hit), noteFor(offset, hit));
-            kpiTarget(owner, month, KpiMetric.BOOKINGS, countTarget(bookingsActual, offset, hit), noteFor(offset, hit));
-        }
-
-        BigDecimal travellers = reportService.actual(KpiMetric.TRAVELLERS, List.of(now), data);
-        kpiTarget(owner, now, KpiMetric.TRAVELLERS,
-                travellers.multiply(new BigDecimal("1.3")).setScale(0, RoundingMode.CEILING)
-                        .max(travellers.add(BigDecimal.valueOf(3))),
-                "Fill the remaining seats on this month's departures.");
-
-        kpiTarget(owner, now, KpiMetric.CANCELLATION_RATE, BigDecimal.TEN,
-                "Keep cancellations at or below 10%.");
-        kpiTarget(owner, now.minusMonths(1), KpiMetric.CANCELLATION_RATE, BigDecimal.TEN,
-                "Keep cancellations at or below 10%.");
-
-        kpiTarget(owner, now, KpiMetric.AVERAGE_BOOKING_VALUE, new BigDecimal("4500"),
-                "Upsell longer itineraries and private vehicles.");
-
-        log.info("Seeded {} KPI targets", kpiTargets.count());
-    }
-
-    private BigDecimal revenueTarget(BigDecimal actual, int offset, boolean hit) {
-        BigDecimal step = new BigDecimal("500");
-        if (offset < 0 && hit && actual.compareTo(new BigDecimal("1000")) >= 0) {
-            return roundTo(actual.multiply(new BigDecimal("0.9")), step, RoundingMode.FLOOR);
-        }
-        BigDecimal factor = offset < 0 ? new BigDecimal("1.25") : offset == 0 ? new BigDecimal("1.5") : new BigDecimal("1.2");
-        BigDecimal floor = offset < 0 ? new BigDecimal("5000") : new BigDecimal("10000");
-        return roundTo(actual.multiply(factor), step, RoundingMode.CEILING).max(floor);
-    }
-
-    private BigDecimal countTarget(BigDecimal actual, int offset, boolean hit) {
-        if (offset < 0 && hit) {
-            BigDecimal lower = actual.multiply(new BigDecimal("0.9")).setScale(0, RoundingMode.FLOOR);
-            if (lower.signum() > 0) {
-                return lower;
-            }
-        }
-        BigDecimal factor = offset < 0 ? new BigDecimal("1.25") : offset == 0 ? new BigDecimal("1.5") : new BigDecimal("1.2");
-        BigDecimal minimum = actual.add(BigDecimal.valueOf(offset == 0 ? 2 : 1)).max(BigDecimal.valueOf(2));
-        return actual.multiply(factor).setScale(0, RoundingMode.CEILING).max(minimum);
-    }
-
-    private BigDecimal roundTo(BigDecimal value, BigDecimal step, RoundingMode mode) {
-        return value.divide(step, 0, mode).multiply(step);
-    }
-
-    private String noteFor(int offset, boolean hit) {
-        if (offset < 0) {
-            return hit ? "Set from the sales forecast at the start of the month."
-                    : "Stretch target that the month fell short of.";
-        }
-        return offset == 0 ? "Stretch target for the Gathering season." : "Provisional - review mid-month.";
-    }
-
-    private void kpiTarget(User owner, YearMonth month, KpiMetric metric, BigDecimal value, String notes) {
-        KpiTarget t = new KpiTarget();
-        t.setMetric(metric);
-        t.setPeriodMonth(month.atDay(1));
-        t.setTargetValue(value.setScale(2, RoundingMode.HALF_UP));
-        t.setNotes(notes);
-        t.setCreatedBy(owner);
-        kpiTargets.save(t);
-    }
-
     /* --------------------------------------------------------------- Users */
 
     private List<User> seedUsers() {
         List<User> created = new ArrayList<>();
-        created.add(user("Anura Wickramasinghe", "ops@sundara.test", "+94 77 004 9910", Role.OPERATIONS_MANAGER));
-        created.add(user("Priya Raman", "relations@sundara.test", "+94 71 118 2204", Role.CUSTOMER_RELATIONS_OFFICER));
-        created.add(user("Tharindu Mendis", "fleet@sundara.test", "+94 76 553 0187", Role.SAFARI_VEHICLE_COORDINATOR));
-        created.add(user("Shalini de Silva", "reservations@sundara.test", "+94 77 447 6610", Role.FINANCE_RESERVATIONS_EXECUTIVE));
-        created.add(user("Daniel Perera", "accounts@sundara.test", "+94 72 220 7745", Role.FINANCE_ACCOUNTS_OFFICER));
+        created.add(user("Amara Okonkwo", "ops@sundara.test", "+255 712 004 991", Role.OPERATIONS_MANAGER));
+        created.add(user("Priya Raman", "relations@sundara.test", "+254 733 118 220", Role.CUSTOMER_RELATIONS_OFFICER));
+        created.add(user("Tobias Mwangi", "fleet@sundara.test", "+254 720 553 018", Role.SAFARI_VEHICLE_COORDINATOR));
+        created.add(user("Lena Fischer", "reservations@sundara.test", "+27 82 447 6610", Role.FINANCE_RESERVATIONS_EXECUTIVE));
+        created.add(user("Daniel Perera", "accounts@sundara.test", "+27 83 220 7745", Role.FINANCE_ACCOUNTS_OFFICER));
         created.add(user("Nadia Hassan", "nadia@example.test", "+44 7700 900321", Role.CUSTOMER));
         created.add(user("Marcus Bell", "marcus@example.test", "+1 415 555 0142", Role.CUSTOMER));
         created.add(user("Sofia Alvarez", "sofia@example.test", "+34 611 22 33 44", Role.CUSTOMER));
@@ -318,75 +125,74 @@ public class DataSeeder implements ApplicationRunner {
 
     private List<Park> seedParks() {
         return List.of(
-                parks.save(new Park(FLAGSHIP_PARK, "Southern Province",
-                        "Dry-zone scrub, lagoons and granite outcrops on the south-east coast, with one of the "
-                                + "highest leopard densities in the world. Block I usually closes for about six "
-                                + "weeks from September.",
-                        new BigDecimal("30.00"), "Department of Wildlife Conservation")),
-                parks.save(new Park("Wilpattu National Park", "North Western Province",
-                        "Sri Lanka's largest park: quiet dry forest set around some sixty natural lakes, or "
-                                + "villus. Leopards, sloth bears and very few other jeeps.",
-                        new BigDecimal("25.00"), "Department of Wildlife Conservation")),
-                parks.save(new Park("Minneriya National Park", "North Central Province",
-                        "An ancient irrigation tank whose shrinking shoreline draws hundreds of elephants each "
-                                + "dry season - the Gathering, from July to October.",
-                        new BigDecimal("25.00"), "Department of Wildlife Conservation")),
-                parks.save(new Park("Udawalawe National Park", "Sabaragamuwa & Uva Provinces",
-                        "Open grassland around a reservoir, where elephant herds can be seen in every season. "
-                                + "Home to the Elephant Transit Home for orphaned calves.",
-                        new BigDecimal("25.00"), "Department of Wildlife Conservation")));
+                parks.save(new Park("Serengeti National Park", "Northern Tanzania",
+                        "Endless short-grass plains that carry the largest terrestrial mammal migration on earth. "
+                                + "Best known for big cat densities in the Seronera valley.",
+                        new BigDecimal("70.00"), "Tanzania National Parks Authority")),
+                parks.save(new Park("Maasai Mara National Reserve", "Narok County, Kenya",
+                        "The northern extension of the Serengeti ecosystem, famous for the Mara River crossings "
+                                + "between July and October and for resident black rhino.",
+                        new BigDecimal("80.00"), "Narok County Wildlife Board")),
+                parks.save(new Park("Kruger National Park", "Limpopo & Mpumalanga, South Africa",
+                        "One of Africa's largest reserves with an exceptional road network, making it ideal for "
+                                + "self-drive style game viewing and night predator drives.",
+                        new BigDecimal("45.00"), "South African National Parks")),
+                parks.save(new Park("Okavango Delta", "Ngamiland, Botswana",
+                        "A vast inland delta where flood waters from the Angolan highlands create seasonal "
+                                + "channels best explored by traditional mokoro canoe.",
+                        new BigDecimal("95.00"), "Botswana Department of Wildlife")));
     }
 
     /* ------------------------------------------------------------ Packages */
 
     private List<SafariPackage> seedPackages(List<Park> parkList) {
-        Park yala = parkList.get(0);
-        Park wilpattu = parkList.get(1);
-        Park minneriya = parkList.get(2);
-        Park udawalawe = parkList.get(3);
+        Park serengeti = parkList.get(0);
+        Park mara = parkList.get(1);
+        Park kruger = parkList.get(2);
+        Park okavango = parkList.get(3);
 
         return List.of(
-                packages.save(new SafariPackage("Leopards & Lagoons: Yala and Bundala",
-                        "Five days on the edge of Yala Block I with a naturalist tracker on every drive, and a morning among the flamingos and painted storks of the Bundala wetlands.",
-                        yala, 5, new BigDecimal("1840.00"), 12,
-                        "https://images.unsplash.com/photo-1566708627877-859df13ae63e?auto=format&fit=crop&w=1400&q=78",
-                        "Tracker-led jeep|Bundala flamingos|Tented camp by Block I")),
+                packages.save(new SafariPackage("Great Migration Explorer",
+                        "Five days tracking the wildebeest herds across the Seronera and western corridor, "
+                                + "with two nights in a mobile tented camp that moves with the migration.",
+                        serengeti, 5, new BigDecimal("2450.00"), 12,
+                        "serengeti-migration", "Mobile tented camp|Sunrise game drives|Resident big cat tracking")),
 
-                packages.save(new SafariPackage("Yala Dawn & Dusk",
-                        "A short, small-group break built around the first jeep through the gate at dawn and the last light of the afternoon, with a sundowner at Kirinda temple rock.",
-                        yala, 3, new BigDecimal("980.00"), 8,
-                        "https://images.unsplash.com/photo-1743014118271-415197f9b0ef?auto=format&fit=crop&w=1400&q=78",
-                        "Small group|First jeep in at dawn|Sundowner at Kirinda")),
+                packages.save(new SafariPackage("Serengeti Balloon & Bush",
+                        "A short break built around a dawn hot-air balloon flight over the plains, followed by "
+                                + "a champagne bush breakfast and two afternoon drives.",
+                        serengeti, 3, new BigDecimal("1780.00"), 8,
+                        "serengeti-balloon", "Hot-air balloon flight|Bush breakfast|Small group")),
 
-                packages.save(new SafariPackage("Wilpattu Villus & Sloth Bears",
-                        "Four days of full-day drives around the lakes of the island's largest park, with packed lunches, patient leopard waits and the best sloth bear sightings in the country.",
-                        wilpattu, 4, new BigDecimal("1960.00"), 10,
-                        "https://images.unsplash.com/photo-1779111370141-4cc5d671be58?auto=format&fit=crop&w=1400&q=78",
-                        "Full-day drives|Sloth bear season|Lakeside lodge")),
+                packages.save(new SafariPackage("Mara Big Five Safari",
+                        "Four days concentrating on the Mara Triangle with experienced spotters, targeting lion, "
+                                + "leopard, elephant, buffalo and the reserve's protected black rhino.",
+                        mara, 4, new BigDecimal("1990.00"), 10,
+                        "mara-big-five", "Big Five focus|Expert spotters|Mara Triangle")),
 
-                packages.save(new SafariPackage("Wilpattu & Kalpitiya: Leopards and Dolphins",
-                        "Six days pairing Wilpattu's quiet forest with the Kalpitiya lagoon, where spinner dolphins gather in their hundreds on calm winter mornings.",
-                        wilpattu, 6, new BigDecimal("2380.00"), 14,
-                        "https://images.unsplash.com/photo-1616128417743-c3a6992a65e7?auto=format&fit=crop&w=1400&q=78",
-                        "Leopard country|Spinner dolphins|Lagoon kayaking")),
+                packages.save(new SafariPackage("Mara River Crossing Special",
+                        "A six-day seasonal departure timed for the river crossings, with patient full-day vigils "
+                                + "at the main crossing points and a Maasai homestead visit.",
+                        mara, 6, new BigDecimal("3120.00"), 14,
+                        "mara-crossing", "River crossing vigils|Cultural visit|Full-day drives")),
 
-                packages.save(new SafariPackage("The Gathering: Minneriya & Kaudulla",
-                        "Three days timed to the herds' afternoon walk to the tank, with Kaudulla by jeep when they move on and a sunrise climb at Sigiriya. An excellent first safari for families.",
-                        minneriya, 3, new BigDecimal("1290.00"), 16,
-                        "https://images.unsplash.com/photo-1719807633728-7ff13f7f2b61?auto=format&fit=crop&w=1400&q=78",
-                        "Family friendly|Afternoon herd drives|Sigiriya sunrise")),
+                packages.save(new SafariPackage("Kruger Classic Bush Drive",
+                        "Three days working the southern Kruger loop roads from a comfortable rest camp base, "
+                                + "an excellent first safari for families.",
+                        kruger, 3, new BigDecimal("1290.00"), 16,
+                        "kruger-classic", "Family friendly|Rest camp base|Southern loop roads")),
 
-                packages.save(new SafariPackage("Cultural Triangle Elephant Weekend",
-                        "A two-night escape from Colombo: an evening drive among the Minneriya herds, a village lunch beside the Habarana tank and a morning in the ancient city of Polonnaruwa.",
-                        minneriya, 2, new BigDecimal("740.00"), 10,
-                        "https://images.unsplash.com/photo-1720783963915-13129dccf433?auto=format&fit=crop&w=1400&q=78",
-                        "Two nights|Village lunch|Polonnaruwa ruins")),
+                packages.save(new SafariPackage("Kruger Night Predator Trail",
+                        "A two-night specialist departure using permitted after-dark drives and spotlights to "
+                                + "find hyena, civet, genet and hunting lion.",
+                        kruger, 2, new BigDecimal("940.00"), 10,
+                        "kruger-night", "Night drives|Spotlight tracking|Nocturnal specialists")),
 
-                packages.save(new SafariPackage("Udawalawe & the South Coast",
-                        "Five days from the elephant herds of Udawalawe and the Elephant Transit Home to a dawn voyage for blue whales off Mirissa, ending in a coastal villa.",
-                        udawalawe, 5, new BigDecimal("2150.00"), 8,
-                        "https://images.unsplash.com/photo-1731124655617-e74233ed4a4d?auto=format&fit=crop&w=1400&q=78",
-                        "Elephant Transit Home|Blue whales off Mirissa|Coastal villa")));
+                packages.save(new SafariPackage("Okavango Delta Mokoro Journey",
+                        "Five days poling the delta channels by mokoro with walking safaris on the palm islands "
+                                + "and two nights of fly-camping under canvas.",
+                        okavango, 5, new BigDecimal("2680.00"), 8,
+                        "okavango-mokoro", "Mokoro channels|Walking safaris|Island fly-camping")));
     }
 
     /* ------------------------------------------------------------ Bookings */
@@ -452,32 +258,32 @@ public class DataSeeder implements ApplicationRunner {
     private List<Vehicle> seedVehicles() {
         LocalDate today = LocalDate.now();
         return List.of(
-                vehicles.save(new Vehicle("WP KA-4471", "Toyota Land Cruiser 79", "4x4 Game Viewer", 7,
+                vehicles.save(new Vehicle("KAJ 442T", "Toyota Land Cruiser 79", "4x4 Game Viewer", 7,
                         VehicleStatus.AVAILABLE, today.minusDays(38), "Pop-top roof, fridge, two spare wheels.")),
-                vehicles.save(new Vehicle("SP CAB-2210", "Toyota Land Cruiser 78", "Extended Safari", 9,
+                vehicles.save(new Vehicle("KBX 907M", "Toyota Land Cruiser 78", "Extended Safari", 9,
                         VehicleStatus.AVAILABLE, today.minusDays(15), "Long wheelbase, charging points at every seat.")),
-                vehicles.save(new Vehicle("NW PH-0932", "Nissan Patrol Safari", "4x4 Game Viewer", 6,
-                        VehicleStatus.AVAILABLE, today.minusDays(61), "Wilpattu-based, fitted with a long-range tank.")),
-                vehicles.save(new Vehicle("UVA KX-1188", "Land Rover Defender 130", "Open Game Viewer", 10,
-                        VehicleStatus.MAINTENANCE, today.minusDays(4), "Gearbox rebuild - back on the road in two weeks.")),
-                vehicles.save(new Vehicle("NC LB-7760", "Toyota Hilux", "Transfer", 5,
-                        VehicleStatus.AVAILABLE, today.minusDays(22), "Airport and hotel transfers around the Cultural Triangle.")));
+                vehicles.save(new Vehicle("TZ 118 SG", "Nissan Patrol Safari", "4x4 Game Viewer", 6,
+                        VehicleStatus.AVAILABLE, today.minusDays(61), "Serengeti-based, fitted with long-range tank.")),
+                vehicles.save(new Vehicle("GP 55 KRG", "Land Rover Defender 130", "Open Game Viewer", 10,
+                        VehicleStatus.MAINTENANCE, today.minusDays(4), "Gearbox rebuild — back on the road in two weeks.")),
+                vehicles.save(new Vehicle("BW 776 OKV", "Toyota Hilux Delta Spec", "Delta Transfer", 5,
+                        VehicleStatus.AVAILABLE, today.minusDays(22), "Raised air intake for delta water crossings.")));
     }
 
     /* -------------------------------------------------------------- Guides */
 
     private List<Guide> seedGuides() {
         return List.of(
-                guides.save(new Guide("Nimal Perera", "nimal.perera@ceylontrails.test", "+94 77 145 9081",
-                        "LK-G-4471", "English, Sinhala, German", "Leopard tracking", 12, GuideStatus.AVAILABLE)),
-                guides.save(new Guide("Dilani Fernando", "dilani.fernando@ceylontrails.test", "+94 71 662 3401",
-                        "LK-G-5518", "English, Sinhala, French", "Birds and endemics", 8, GuideStatus.AVAILABLE)),
-                guides.save(new Guide("Ruwan Silva", "ruwan.silva@ceylontrails.test", "+94 76 559 1174",
-                        "LK-G-2209", "English, Sinhala, Tamil", "Elephant behaviour", 15, GuideStatus.AVAILABLE)),
-                guides.save(new Guide("Kasun Jayasuriya", "kasun.jayasuriya@ceylontrails.test", "+94 72 448 2056",
-                        "LK-G-1183", "English, Sinhala", "Sloth bears and night ecology", 6, GuideStatus.AVAILABLE)),
-                guides.save(new Guide("Priyanthi Rathnayake", "priyanthi.r@ceylontrails.test", "+94 77 220 6170",
-                        "LK-G-7702", "English, Sinhala, Italian", "Marine life and whales", 10, GuideStatus.ON_LEAVE)));
+                guides.save(new Guide("Joseph Kimani", "joseph.kimani@sundara.test", "+254 722 145 908",
+                        "KE-G-4471", "English, Swahili, German", "Big Five tracking", 12, GuideStatus.AVAILABLE)),
+                guides.save(new Guide("Grace Mutinda", "grace.mutinda@sundara.test", "+254 711 662 340",
+                        "KE-G-5518", "English, Swahili, French", "Ornithology", 8, GuideStatus.AVAILABLE)),
+                guides.save(new Guide("Elias Ndlovu", "elias.ndlovu@sundara.test", "+27 82 559 1174",
+                        "ZA-G-2209", "English, Afrikaans, Zulu", "Walking safaris", 15, GuideStatus.AVAILABLE)),
+                guides.save(new Guide("Thandiwe Moyo", "thandiwe.moyo@sundara.test", "+267 71 448 205",
+                        "BW-G-1183", "English, Setswana", "Delta and mokoro", 6, GuideStatus.AVAILABLE)),
+                guides.save(new Guide("Peter Massawe", "peter.massawe@sundara.test", "+255 754 220 617",
+                        "TZ-G-7702", "English, Swahili, Italian", "Migration ecology", 10, GuideStatus.ON_LEAVE)));
     }
 
     /* --------------------------------------------------------- Assignments */
@@ -522,7 +328,7 @@ public class DataSeeder implements ApplicationRunner {
         // 2. In progress, assigned and escalated.
         Complaint inProgress = complaint(marcus, completed.isEmpty() ? null : completed.get(1),
                 "Charged twice for the same booking",
-                "My card statement shows two identical charges for the Yala trip. I have attached "
+                "My card statement shows two identical charges for the Kruger trip. I have attached "
                         + "the statement lines to this case. Please refund the duplicate.",
                 ComplaintCategory.PAYMENT, ComplaintPriority.CRITICAL, ComplaintStatus.IN_PROGRESS,
                 relations, 9);
@@ -603,7 +409,7 @@ public class DataSeeder implements ApplicationRunner {
                         "Your payment has been received in full and your departure is confirmed.",
                         "Payment", b.getId(), b.getCreatedAt().plusSeconds(86400));
                 notify(b.getCustomer(), NotificationChannel.SMS, null,
-                        "Ceylon Trails: " + b.getBookingReference() + " confirmed for " + b.getTripDate() + ".",
+                        "Sundara Safari: " + b.getBookingReference() + " confirmed for " + b.getTripDate() + ".",
                         "Booking", b.getId(), b.getCreatedAt().plusSeconds(86400));
             }
 
@@ -850,9 +656,7 @@ public class DataSeeder implements ApplicationRunner {
         entry.setSubject(subject);
         entry.setMessage(message);
         entry.setAuthor(author);
-        // Each note lands 90 minutes after the previous one on the same case.
-        int earlier = communications.findByComplaintId(complaint.getId()).size();
-        entry.setCreatedAt(complaint.getCreatedAt().plusSeconds(60L * 90 * (earlier + 1)));
+        entry.setCreatedAt(complaint.getCreatedAt().plusSeconds(60L * 90 * (communications.count() % 7 + 1)));
         communications.save(entry);
     }
 

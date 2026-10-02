@@ -11,7 +11,7 @@ import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.util.List;
 
-public final class RelationsDtos {
+public final class RelationsDtosRelationsDtos {
 
     /* --------------------------------------------------------- Complaints */
 

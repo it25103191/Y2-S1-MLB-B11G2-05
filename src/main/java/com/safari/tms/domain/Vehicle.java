@@ -1,5 +1,6 @@
 package com.safari.tms.domain;
 
+import com.safari.tms.domain.enums.VehicleStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

@@ -6,7 +6,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.util.List;
 
-/** Strongly typed binding for every {@code safari.*} key in application.yml. */
 @ConfigurationProperties(prefix = "safari")
 @Getter
 @Setter
@@ -41,7 +40,6 @@ public class AppProperties {
     @Getter
     @Setter
     public static class Permits {
-        /** A permit inside this many days of expiry is flagged "expiring soon". */
         private int expiryWarningDays = 30;
     }
 
@@ -51,7 +49,6 @@ public class AppProperties {
         private int successRate = 80;
         private int declineRate = 15;
         private int timeoutRate = 5;
-        /** When set to SUCCESS / DECLINED / TIMEOUT the simulator always returns that outcome. */
         private String forceOutcome = "";
     }
 }
