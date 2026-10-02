@@ -42,4 +42,3 @@ public class ApiException extends RuntimeException {
         return new ApiException(HttpStatus.FORBIDDEN, message);
     }
 }
-
