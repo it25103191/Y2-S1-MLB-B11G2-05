@@ -1,6 +1,5 @@
 package com.safari.tms.domain;
 
-import com.safari.tms.domain.enums.Currency;
 import com.safari.tms.domain.enums.PaymentMethod;
 import com.safari.tms.domain.enums.PaymentStatus;
 import jakarta.persistence.*;
@@ -62,30 +61,5 @@ public class Payment {
 
     @Column(nullable = false)
     private Instant createdAt = Instant.now();
-
-    /** Free-text note, used mainly for offline payments (e.g. bank slip details). */
-    @Column(length = 500)
-    private String notes;
-
-    @Column(length = 500)
-    private String voidReason;
-
-    private Instant voidedAt;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "voided_by_id")
-    private User voidedBy;
-
-    /** Currency the customer was charged in. Null on payments taken before LKR support (USD). */
-    @Enumerated(EnumType.STRING)
-    @Column(length = 3)
-    private Currency currency;
-
-    /** The amount in {@link #currency}; {@link #amount} stays the USD ledger figure. */
-    @Column(precision = 16, scale = 2)
-    private BigDecimal chargedAmount;
-
-    /** Units of {@link #currency} per US dollar at the moment of payment. */
-    @Column(precision = 14, scale = 4)
-    private BigDecimal fxRate;
 }
+
