@@ -28,7 +28,16 @@ public final class BookingDtos {
     }
 
     /** Changes a pending booking. Capacity is re-checked and the price recalculated. */
+    public record BookingUpdateRequest(
+            @NotNull(message = "Choose a trip date")
+            @Future(message = "Trip date must be in the future")
+            LocalDate tripDate,
 
+            @NotNull(message = "Number of participants is required")
+            @Min(value = 1, message = "At least one participant is required")
+            Integer participants,
+
+            @Size(max = 1000) String specialRequests) {
     }
 
     public record CancelRequest(@Size(max = 500) String reason) {
