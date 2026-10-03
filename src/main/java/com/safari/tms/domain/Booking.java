@@ -69,10 +69,7 @@ public class Booking {
     @Version
     private Long version;
 
-    @Transient
-    public BigDecimal getBalanceDue() {
-        BigDecimal paid = amountPaid == null ? BigDecimal.ZERO : amountPaid;
-        return totalPrice.subtract(paid);
+
     }
 
     @Transient
