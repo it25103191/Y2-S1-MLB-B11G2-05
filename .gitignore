@@ -1,53 +1,29 @@
-HELP.md
-target/
-.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
-
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### VS Code ###
-.vscode/
-# Dependencies and build output
+# Build output and dependencies
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
 frontend/node_modules/
 frontend/dist/
-backend/target/
+HELP.md
 
-# IDE and local tool settings
+# IDE and tool settings
 .idea/
 *.iml
+*.iws
+*.ipr
 .vscode/
+.classpath
+.project
+.settings/
 .claude/
 
 # Python
 __pycache__/
 *.pyc
 
-# Local secrets and personal notes
+# Local secrets and personal files (never commit these)
 .env
+frontend/.env.local
+run-backend-friend.cmd
 Claude outputs/
 
 # OS files
