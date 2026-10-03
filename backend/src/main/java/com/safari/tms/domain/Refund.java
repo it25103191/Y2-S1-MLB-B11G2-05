@@ -37,6 +37,10 @@ public class Refund {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal calculatedAmount = BigDecimal.ZERO;
 
+    /** Amount agreed while the request is still open, before a final approval. */
+    @Column(precision = 12, scale = 2)
+    private BigDecimal adjustedAmount;
+
     /** Amount a finance officer actually approved (may differ from calculated). */
     @Column(precision = 12, scale = 2)
     private BigDecimal approvedAmount;
@@ -69,4 +73,3 @@ public class Refund {
     @JoinColumn(name = "processed_by_id")
     private User processedBy;
 }
-
