@@ -47,5 +47,9 @@ public interface SafariPackageRepository extends JpaRepository<SafariPackage, Lo
      * Takes a write lock on the package row. Booking creation calls this first so two concurrent
      * requests for the same departure cannot both pass the capacity check.
      */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from SafariPackage p where p.id = :id")
+    Optional<SafariPackage> findByIdForUpdate(@Param("id") Long id);
 
+    long countByParkId(Long parkId);
 }
