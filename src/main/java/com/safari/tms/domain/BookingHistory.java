@@ -51,12 +51,5 @@ public class BookingHistory {
     @Column(nullable = false)
     private Instant createdAt = Instant.now();
 
-    public BookingHistory(Booking booking, String event, String title, String detail, User actor) {
-        this.booking = booking;
-        this.event = event;
-        this.title = title;
-        this.detail = detail;
-        this.status = booking.getStatus();
-        this.actor = actor;
-    }
+
 }
