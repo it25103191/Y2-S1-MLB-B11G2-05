@@ -24,7 +24,9 @@ import java.util.List;
 @RequestMapping("/api/bookings")
 public class BookingController {
 
-
+    private final BookingService bookingService;
+    private final AuthService authService;
+    private final PermitService permitService;
 
     public BookingController(BookingService bookingService, AuthService authService,
                              PermitService permitService) {
