@@ -97,7 +97,14 @@ public final class CatalogueDtos {
     }
 
     /** Live seat availability for one package on one departure date. */
-
+    public record AvailabilityView(
+            Long packageId,
+            LocalDate tripDate,
+            int maxGroupSize,
+            int seatsTaken,
+            int seatsRemaining,
+            boolean soldOut) {
+    }
 
     private CatalogueDtos() {
     }
