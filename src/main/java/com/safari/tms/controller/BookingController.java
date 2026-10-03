@@ -107,10 +107,6 @@ public class BookingController {
     }
 
     /** The booking's timeline: every change, who made it and when. Ownership is checked first. */
-    @GetMapping("/{id}/history")
-    public List<BookingHistoryView> history(@PathVariable Long id) {
-        User caller = authService.requireCurrentUser();
-        bookingService.findOne(id, caller);
-        return bookingHistoryService.forBooking(id, caller);
+
     }
 }
