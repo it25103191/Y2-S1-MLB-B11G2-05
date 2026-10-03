@@ -52,6 +52,13 @@ public class SafariPackage {
 
     public SafariPackage(String name, String description, Park park, Integer durationDays,
                          BigDecimal pricePerPerson, Integer maxGroupSize, String imageUrl, String highlights) {
-
+        this.name = name;
+        this.description = description;
+        this.park = park;
+        this.durationDays = durationDays;
+        this.pricePerPerson = pricePerPerson;
+        this.maxGroupSize = maxGroupSize;
+        this.imageUrl = imageUrl;
+        this.highlights = highlights;
     }
 }
