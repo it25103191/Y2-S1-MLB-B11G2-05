@@ -12,11 +12,7 @@ import java.util.List;
 @Setter
 public class AppProperties {
 
-    private Jwt jwt = new Jwt();
-    private Cors cors = new Cors();
-    private Seed seed = new Seed();
-    private Permits permits = new Permits();
-    private Payments payments = new Payments();
+
 
     @Getter
     @Setter
