@@ -110,5 +110,6 @@ public final class BookingDtos {
             String message) {
     }
 
-
+    private BookingDtos() {
+    }
 }
