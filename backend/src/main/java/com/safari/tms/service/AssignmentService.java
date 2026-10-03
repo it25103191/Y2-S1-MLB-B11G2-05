@@ -1,22 +1,25 @@
 package com.safari.tms.service;
 
-import com.safari.tms.domain.Assignment;
-import com.safari.tms.domain.Guide;
-import com.safari.tms.domain.Vehicle;
+import com.safari.tms.domain.*;
 import com.safari.tms.domain.enums.AssignmentStatus;
 import com.safari.tms.domain.enums.BookingStatus;
 import com.safari.tms.domain.enums.GuideStatus;
 import com.safari.tms.domain.enums.VehicleStatus;
 import com.safari.tms.dto.ResourceDtos.*;
 import com.safari.tms.exception.ApiException;
-import com.safari.tms.repo.AssignmentRepository;
-import com.safari.tms.repo.GuideRepository;
-import com.safari.tms.repo.VehicleRepository;
+import com.safari.tms.repo.*;
+import com.safari.tms.service.crew.CrewSelectionStrategy;
+import com.safari.tms.service.crew.LeastBusyCrew;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 public class AssignmentService {
@@ -26,17 +29,20 @@ public class AssignmentService {
     private final GuideRepository guides;
     private final VehicleRepository vehicles;
     private final NotificationService notifications;
+    private final List<CrewSelectionStrategy> crewStrategies;
 
     public AssignmentService(AssignmentRepository assignments,
                              BookingRepository bookings,
                              GuideRepository guides,
                              VehicleRepository vehicles,
-                             NotificationService notifications) {
+                             NotificationService notifications,
+                             List<CrewSelectionStrategy> crewStrategies) {
         this.assignments = assignments;
         this.bookings = bookings;
         this.guides = guides;
         this.vehicles = vehicles;
         this.notifications = notifications;
+        this.crewStrategies = crewStrategies;
     }
 
     /* ------------------------------------------------------------ Queries */
@@ -229,9 +235,17 @@ public class AssignmentService {
 
     /* --------------------------------------------------------- Suggestion */
 
-    /** Ranks every guide and vehicle for a booking and recommends the best free pairing. */
+    /**
+     * Lists every guide and vehicle for a booking, marks which are free, and recommends a pairing.
+     *
+     * <p>Strategy pattern: this method is the context. It does the work every rule needs (finding
+     * clashes, statuses and workload), then lets the chosen {@link CrewSelectionStrategy} pick.
+     *
+     * @param strategyKey which rule to use; {@code null} means the default, least busy
+     */
     @Transactional(readOnly = true)
-    public SuggestionView suggest(Long bookingId) {
+    public SuggestionView suggest(Long bookingId, String strategyKey) {
+        CrewSelectionStrategy strategy = crewStrategy(strategyKey);
         Booking booking = bookings.findDetailById(bookingId)
                 .orElseThrow(() -> ApiException.notFound("Booking", bookingId));
 
@@ -265,7 +279,8 @@ public class AssignmentService {
                             !busy && !offDuty,
                             reason,
                             null,
-                            assignments.countGuideAssignments(g.getId(), windowStart, windowEnd));
+                            assignments.countGuideAssignments(g.getId(), windowStart, windowEnd),
+                            g.getYearsExperience());
                 })
                 .toList();
 
@@ -287,23 +302,14 @@ public class AssignmentService {
                             !busy && !offRoad && !tooSmall,
                             reason,
                             v.getCapacity(),
-                            assignments.countVehicleAssignments(v.getId(), windowStart, windowEnd));
+                            assignments.countVehicleAssignments(v.getId(), windowStart, windowEnd),
+                            null);
                 })
                 .toList();
 
-        // Prefer the most experienced free guide, and the smallest vehicle that still fits.
-        Long bestGuide = guideCandidates.stream()
-                .filter(CandidateView::available)
-                .min(Comparator.comparingLong(CandidateView::workloadDays))
-                .map(CandidateView::id)
-                .orElse(null);
-
-        Long bestVehicle = vehicleCandidates.stream()
-                .filter(CandidateView::available)
-                .min(Comparator.comparingInt((CandidateView c) -> c.capacity() == null ? 999 : c.capacity())
-                        .thenComparingLong(CandidateView::workloadDays))
-                .map(CandidateView::id)
-                .orElse(null);
+        // The chosen strategy decides who to recommend from the free candidates.
+        Long bestGuide = strategy.pickGuide(guideCandidates);
+        Long bestVehicle = strategy.pickVehicle(vehicleCandidates, booking.getParticipants());
 
         String rationale;
         if (bestGuide == null && bestVehicle == null) {
@@ -313,12 +319,21 @@ public class AssignmentService {
         } else if (bestVehicle == null) {
             rationale = "No vehicle is free with at least " + booking.getParticipants() + " seats for this window.";
         } else {
-            rationale = "Picked the least-loaded free guide and the smallest free vehicle that seats "
-                    + booking.getParticipants() + ".";
+            rationale = strategy.rationale(booking.getParticipants());
         }
 
         return new SuggestionView(booking.getId(), booking.getBookingReference(), from, to,
                 booking.getParticipants(), guideCandidates, vehicleCandidates,
-                bestGuide, bestVehicle, rationale);
+                bestGuide, bestVehicle, rationale, strategy.key());
+    }
+
+    /** Picks the crew-selection strategy by key; unknown keys are refused. */
+    private CrewSelectionStrategy crewStrategy(String key) {
+        String wanted = key == null || key.isBlank() ? LeastBusyCrew.KEY : key.trim();
+        return crewStrategies.stream()
+                .filter(s -> s.key().equalsIgnoreCase(wanted))
+                .findFirst()
+                .orElseThrow(() -> ApiException.badRequest("Unknown suggestion rule '" + wanted + "'. Use one of: "
+                        + String.join(", ", crewStrategies.stream().map(CrewSelectionStrategy::key).toList()) + "."));
     }
 }
