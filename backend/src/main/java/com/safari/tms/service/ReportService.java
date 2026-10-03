@@ -7,6 +7,7 @@ import com.safari.tms.domain.enums.KpiMetric;
 import com.safari.tms.domain.enums.PaymentStatus;
 import com.safari.tms.dto.ReportDtos.*;
 import com.safari.tms.repo.*;
+import com.safari.tms.service.kpi.KpiCalculatorFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -106,33 +107,8 @@ public class ReportService {
      * revenue counts settled payments received in those months.
      */
     public BigDecimal actual(KpiMetric metric, Collection<YearMonth> months, Snapshot data) {
-        Set<YearMonth> wanted = new HashSet<>(months);
-
-        List<Booking> departing = data.bookings().stream()
-                .filter(b -> wanted.contains(YearMonth.from(b.getTripDate())))
-                .toList();
-        List<Booking> active = departing.stream()
-                .filter(b -> b.getStatus() != BookingStatus.CANCELLED)
-                .toList();
-
-        return switch (metric) {
-            case BOOKINGS -> BigDecimal.valueOf(active.size());
-            case TRAVELLERS -> BigDecimal.valueOf(active.stream().mapToLong(Booking::getParticipants).sum());
-            case REVENUE -> data.payments().stream()
-                    .filter(p -> p.getStatus() == PaymentStatus.SUCCESS && p.getPaidAt() != null)
-                    .filter(p -> wanted.contains(YearMonth.from(p.getPaidAt().atZone(ZoneOffset.UTC))))
-                    .map(Payment::getAmount)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add)
-                    .setScale(2, RoundingMode.HALF_UP);
-            case CANCELLATION_RATE -> departing.isEmpty()
-                    ? BigDecimal.ZERO.setScale(1)
-                    : BigDecimal.valueOf(100.0 * (departing.size() - active.size()) / departing.size())
-                    .setScale(1, RoundingMode.HALF_UP);
-            case AVERAGE_BOOKING_VALUE -> active.isEmpty()
-                    ? BigDecimal.ZERO.setScale(2)
-                    : active.stream().map(Booking::getTotalPrice).reduce(BigDecimal.ZERO, BigDecimal::add)
-                    .divide(BigDecimal.valueOf(active.size()), 2, RoundingMode.HALF_UP);
-        };
+        // Factory pattern: the factory picks the calculator class for this metric.
+        return KpiCalculatorFactory.create(metric).actual(months, data);
     }
 
     /** {@code actual} as a percentage of {@code target}, or {@code null} when the target is zero. */
