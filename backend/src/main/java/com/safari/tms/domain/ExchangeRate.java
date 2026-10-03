@@ -9,7 +9,7 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.Instant;
 
-/** How many units of a currency one US dollar buys. USD itself is the base and is never stored. */
+ //Exchange rate per 1 USD//
 @Entity
 @Table(name = "exchange_rates",
         uniqueConstraints = @UniqueConstraint(name = "uk_exchange_rates_currency", columnNames = "currency"))
