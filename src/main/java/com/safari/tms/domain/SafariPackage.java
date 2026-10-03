@@ -15,7 +15,9 @@ import java.time.Instant;
 @NoArgsConstructor\
 public class SafariPackage {
 
-
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @Column(nullable = false, length = 150)
     private String name;
