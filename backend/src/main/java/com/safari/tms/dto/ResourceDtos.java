@@ -186,7 +186,9 @@ public final class ResourceDtos {
             boolean available,
             String unavailableReason,
             Integer capacity,
-            long workloadDays) {
+            long workloadDays,
+            /** Guides only: years in the job. Null for vehicles. */
+            Integer yearsExperience) {
     }
 
     public record SuggestionView(
@@ -199,7 +201,9 @@ public final class ResourceDtos {
             List<CandidateView> vehicles,
             Long recommendedGuideId,
             Long recommendedVehicleId,
-            String rationale) {
+            String rationale,
+            /** Key of the crew-selection strategy that made the recommendation. */
+            String strategy) {
     }
 
     private ResourceDtos() {
