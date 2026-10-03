@@ -1,4 +1,4 @@
-
+package com.safari.tms.repo;
 
 import com.safari.tms.domain.Booking;
 import com.safari.tms.domain.enums.BookingStatus;
