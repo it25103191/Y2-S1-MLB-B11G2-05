@@ -66,11 +66,7 @@ public class PackageController {
         return ResponseEntity.status(HttpStatus.CREATED).body(packageService.create(request));
     }
 
-    @PutMapping("/{id}")
-    @PreAuthorize(Roles.CATALOGUE_MANAGERS)
-    public PackageView update(@PathVariable Long id, @Valid @RequestBody PackageRequest request) {
-        return packageService.update(id, request);
-    }
+
 
     /** Only succeeds for a package that has never been booked; otherwise deactivate it. */
     @DeleteMapping("/{id}")
