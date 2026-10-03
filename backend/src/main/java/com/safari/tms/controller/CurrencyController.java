@@ -23,7 +23,7 @@ public class CurrencyController {
         this.authService = authService;
     }
 
-    /** Public, so visitors see prices in their own currency before they sign in. */
+    //Returns all exchange rates//
     @GetMapping
     public RatesView rates() {
         return currencyService.list();
