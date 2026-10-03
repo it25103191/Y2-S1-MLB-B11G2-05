@@ -1,0 +1,58 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: safari-tms
+
+  datasource:
+    url: ${SAFARI_DB_URL:jdbc:sqlserver://localhost:1433;databaseName=ceylon_trails;encrypt=true;trustServerCertificate=true}
+    username: ${SAFARI_DB_USER:sa}
+    password: ${SAFARI_DB_PASSWORD:}
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+      pool-name: SafariHikariPool
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          time_zone: UTC
+    open-in-view: false
+    show-sql: false
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+
+safari:
+  jwt:
+    # Override in production via SAFARI_JWT_SECRET (min 32 chars / 256 bits for HS256)
+    secret: ${SAFARI_JWT_SECRET:c2FmYXJpLXRtcy1kZXYtc2VjcmV0LWtleS1jaGFuZ2UtbWUtaW4tcHJvZHVjdGlvbi0yMDI2}
+    expiration-minutes: ${SAFARI_JWT_EXP_MINUTES:480}
+    issuer: safari-tms
+  cors:
+    allowed-origins: ${SAFARI_CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+  seed:
+    enabled: ${SAFARI_SEED_ENABLED:true}
+  permits:
+    expiry-warning-days: ${SAFARI_PERMIT_WARNING_DAYS:30}
+  payments:
+    # Simulated gateway outcome weights (must sum to 100)
+    success-rate: ${SAFARI_PAY_SUCCESS_RATE:80}
+    decline-rate: ${SAFARI_PAY_DECLINE_RATE:15}
+    timeout-rate: ${SAFARI_PAY_TIMEOUT_RATE:5}
+    force-outcome: ${SAFARI_PAY_FORCE_OUTCOME:}
+
+logging:
+  level:
+    root: INFO
+    com.safari.tms: INFO
+    org.hibernate.SQL: WARN
