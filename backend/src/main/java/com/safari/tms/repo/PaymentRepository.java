@@ -47,7 +47,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             """)
     List<Payment> findForBooking(@Param("bookingId") Long bookingId);
 
-    /** Sum of settled money against a booking. */
+
     @Query("""
             select coalesce(sum(p.amount), 0) from Payment p
              where p.booking.id = :bookingId
