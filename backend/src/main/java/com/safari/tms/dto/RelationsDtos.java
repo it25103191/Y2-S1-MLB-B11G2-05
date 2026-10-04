@@ -11,7 +11,7 @@ import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.util.List;
 
-public final class RelationsDtosRelationsDtos {
+public final class RelationsDtos {
 
     /* --------------------------------------------------------- Complaints */
 
@@ -46,7 +46,17 @@ public final class RelationsDtosRelationsDtos {
             @Size(max = 200) String subject,
 
             /** When true a notification record is written for the customer as well. */
-            boolean notifyCustomer) {
+            boolean notifyCustomer,
+
+            /** Set when the reply was started from a template, so its usage can be counted. */
+            Long templateId) {
+    }
+
+    public record NoteUpdateRequest(
+            @NotBlank(message = "Message cannot be empty")
+            @Size(max = 4000) String message,
+
+            @Size(max = 200) String subject) {
     }
 
     public record EscalateRequest(
@@ -112,10 +122,29 @@ public final class RelationsDtosRelationsDtos {
             CommunicationDirection direction,
             String subject,
             String message,
+            Long authorId,
             String authorName,
-            Instant createdAt) {
+            boolean authorIsStaff,
+            Instant createdAt,
+            Instant editedAt,
+
+            /**
+             * True when nobody may edit or delete the entry: status changes, escalations and
+             * system entries are the audit trail, and the opening message is the case itself.
+             */
+            boolean locked) {
+
+        /** Types a person typed by hand, as opposed to entries the system records. */
+        public static boolean isManual(CommunicationType type) {
+            return type == CommunicationType.IN_APP_NOTE || type == CommunicationType.EMAIL
+                    || type == CommunicationType.PHONE_CALL || type == CommunicationType.SMS;
+        }
 
         public static CommunicationView of(CommunicationLog c) {
+            return of(c, false);
+        }
+
+        public static CommunicationView of(CommunicationLog c, boolean openingMessage) {
             return new CommunicationView(
                     c.getId(),
                     c.getCustomer().getId(),
@@ -123,9 +152,44 @@ public final class RelationsDtosRelationsDtos {
                     c.getComplaint() == null ? null : c.getComplaint().getId(),
                     c.getBooking() == null ? null : c.getBooking().getId(),
                     c.getType(), c.getDirection(), c.getSubject(), c.getMessage(),
+                    c.getAuthor() == null ? null : c.getAuthor().getId(),
                     c.getAuthor() == null ? "System" : c.getAuthor().getFullName(),
-                    c.getCreatedAt());
+                    c.getAuthor() != null && c.getAuthor().getRole().isStaff(),
+                    c.getCreatedAt(),
+                    c.getEditedAt(),
+                    openingMessage || !isManual(c.getType()));
         }
+    }
+
+    /* --------------------------------------------------- Reply templates */
+
+    public record ReplyTemplateRequest(
+            @NotBlank(message = "Give the template a title")
+            @Size(max = 120, message = "Title must be 120 characters or fewer") String title,
+
+            /** Leave empty for a template that suits any category. */
+            ComplaintCategory category,
+
+            @Size(max = 200) String subject,
+
+            @NotBlank(message = "The template body cannot be empty")
+            @Size(max = 4000) String body,
+
+            Boolean active) {
+    }
+
+    public record ReplyTemplateView(
+            Long id,
+            String title,
+            ComplaintCategory category,
+            String subject,
+            String body,
+            boolean active,
+            int usageCount,
+            List<String> placeholders,
+            String createdByName,
+            Instant createdAt,
+            Instant updatedAt) {
     }
 
     public record NotificationView(
