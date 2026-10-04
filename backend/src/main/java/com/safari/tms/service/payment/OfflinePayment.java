@@ -6,17 +6,13 @@ import com.safari.tms.domain.enums.PaymentStatus;
 
 import java.time.Instant;
 
-/**
- * Shared behaviour for money that finance staff record after receiving it outside the website: it
- * has already changed hands, so it always succeeds and never goes near the card gateway. Each
- * subclass is one concrete strategy (cash, bank transfer, mobile money).
- */
+
 public abstract class OfflinePayment implements PaymentStrategy {
 
-    /** The payment method this strategy records. */
+
     protected abstract PaymentMethod method();
 
-    /** How the method reads in a sentence, e.g. "bank transfer". */
+
     protected abstract String label();
 
     @Override

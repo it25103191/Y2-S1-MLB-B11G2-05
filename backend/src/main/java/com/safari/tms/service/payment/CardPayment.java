@@ -9,10 +9,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 
-/**
- * Concrete strategy: a credit or debit card authorised through the (simulated) payment gateway.
- * The only method customers can use on the website, and the only one that can be declined.
- */
+
 @Component
 public class CardPayment implements PaymentStrategy {
 
