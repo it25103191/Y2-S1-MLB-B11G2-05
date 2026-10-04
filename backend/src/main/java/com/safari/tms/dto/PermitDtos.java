@@ -26,6 +26,17 @@ public final class PermitDtos {
             @Size(max = 1000) String notes) {
     }
 
+    /** Edits a permit that is still waiting for the park authority. */
+    public record PermitUpdateRequest(
+            @NotNull(message = "Choose an expiry date") LocalDate expiryDate,
+
+            @NotNull(message = "Enter how many travellers the permit covers")
+            @jakarta.validation.constraints.Min(value = 1, message = "A permit must cover at least one traveller")
+            Integer coveredParticipants,
+
+            @Size(max = 1000) String notes) {
+    }
+
     public record PermitRenewRequest(
             @NotNull(message = "Choose a new expiry date") LocalDate expiryDate,
             @Size(max = 1000) String notes) {
@@ -48,6 +59,7 @@ public final class PermitDtos {
             LocalDate tripEndDate,
             BigDecimal feeAmount,
             Integer coveredParticipants,
+            Integer bookingParticipants,
             Integer renewalCount,
             String notes,
             String requestedByName,
@@ -84,6 +96,10 @@ public final class PermitDtos {
             } else if (p.getStatus() == PermitStatus.APPROVED && p.getExpiryDate().isBefore(tripEnd)) {
                 risk = true;
                 reason = "Permit expires " + p.getExpiryDate() + ", before the trip ends on " + tripEnd + ".";
+            } else if (p.getCoveredParticipants() < p.getBooking().getParticipants()) {
+                risk = true;
+                reason = "Permit covers " + p.getCoveredParticipants() + " of "
+                        + p.getBooking().getParticipants() + " travellers.";
             } else if (p.getStatus() == PermitStatus.PENDING
                     && java.time.temporal.ChronoUnit.DAYS.between(today, tripStart) <= warningDays) {
                 risk = true;
@@ -100,7 +116,8 @@ public final class PermitDtos {
                     p.getPark().getId(), p.getPark().getName(), p.getPark().getPermitAuthority(),
                     expired && p.getStatus() == PermitStatus.APPROVED ? PermitStatus.EXPIRED : p.getStatus(),
                     p.getIssueDate(), p.getExpiryDate(), tripStart, tripEnd,
-                    p.getFeeAmount(), p.getCoveredParticipants(), p.getRenewalCount(), p.getNotes(),
+                    p.getFeeAmount(), p.getCoveredParticipants(), p.getBooking().getParticipants(),
+                    p.getRenewalCount(), p.getNotes(),
                     p.getRequestedBy() == null ? null : p.getRequestedBy().getFullName(),
                     p.getApprovedAt(), p.getCreatedAt(),
                     days, soon, risk, reason);
