@@ -110,6 +110,26 @@ public final class BookingDtos {
             String message) {
     }
 
+    /**
+     * One entry on a booking's timeline.
+     *
+     * @param actorName who made the change, as this viewer should see it ("You", a staff name, ...)
+     * @param actorRole the staff role, shown to staff only
+     * @param derived   true when worked out from the booking itself, for bookings made before the
+     *                  timeline existed
+     */
+    public record BookingHistoryView(
+            Long id,
+            String event,
+            String title,
+            String detail,
+            BookingStatus status,
+            String actorName,
+            String actorRole,
+            Instant at,
+            boolean derived) {
+    }
+
     private BookingDtos() {
     }
 }

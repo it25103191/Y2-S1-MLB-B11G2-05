@@ -19,6 +19,8 @@ import com.safari.tms.repo.PaymentRepository;
 import com.safari.tms.repo.PermitRepository;
 import com.safari.tms.repo.RefundRepository;
 import com.safari.tms.repo.SafariPackageRepository;
+import com.safari.tms.service.booking.BookingEvent;
+import com.safari.tms.service.booking.BookingEvents;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +31,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Bookings: reserve, edit, cancel, delete and staff status changes.
+ *
+ * <p>Observer pattern: this service is where booking changes happen, but it does not e-mail
+ * customers or raise refunds itself. It reports each change to {@link BookingEvents} (the
+ * subject), whose observers react: {@code CustomerBookingNotifier} sends the e-mails,
+ * {@code RefundOnCancellation} raises the refund and {@code BookingHistoryRecorder} writes the
+ * booking's timeline.
+ */
 @Service
 public class BookingService {
 
@@ -38,8 +49,7 @@ public class BookingService {
     private final BookingRepository bookings;
     private final SafariPackageRepository packages;
     private final ReferenceGenerator references;
-    private final NotificationService notifications;
-    private final RefundService refundService;
+    private final BookingEvents events;
     private final AssignmentRepository assignments;
     private final PermitRepository permits;
     private final PaymentRepository payments;
@@ -49,8 +59,7 @@ public class BookingService {
     public BookingService(BookingRepository bookings,
                           SafariPackageRepository packages,
                           ReferenceGenerator references,
-                          NotificationService notifications,
-                          RefundService refundService,
+                          BookingEvents events,
                           AssignmentRepository assignments,
                           PermitRepository permits,
                           PaymentRepository payments,
@@ -59,8 +68,7 @@ public class BookingService {
         this.bookings = bookings;
         this.packages = packages;
         this.references = references;
-        this.notifications = notifications;
-        this.refundService = refundService;
+        this.events = events;
         this.assignments = assignments;
         this.permits = permits;
         this.payments = payments;
@@ -104,12 +112,7 @@ public class BookingService {
 
         Booking saved = bookings.save(booking);
 
-        notifications.email(customer, "Booking " + saved.getBookingReference() + " received",
-                "Thanks " + customer.getFullName() + ", we are holding " + saved.getParticipants()
-                        + " place(s) on '" + pkg.getName() + "' for " + saved.getTripDate()
-                        + ". Your balance of " + saved.getTotalPrice()
-                        + " is due by " + saved.getPaymentDueDate() + ".",
-                "Booking", saved.getId());
+        events.notifyObservers(BookingEvent.created(saved, customer));
 
         return BookingView.of(saved);
     }
@@ -194,15 +197,8 @@ public class BookingService {
 
         Booking saved = bookings.save(booking);
 
-        // Money already taken triggers a refund request assessed against the cancellation policy.
-        refundService.createFor(saved, "Booking cancelled: " + saved.getCancellationReason(), caller);
-
-        notifications.email(booking.getCustomer(), "Booking " + saved.getBookingReference() + " cancelled",
-                "Your booking for '" + saved.getSafariPackage().getName() + "' on " + saved.getTripDate()
-                        + " has been cancelled. " + (saved.getAmountPaid().compareTo(BigDecimal.ZERO) > 0
-                        ? "Any refund due will be assessed against our cancellation policy."
-                        : "No payment had been taken."),
-                "Booking", saved.getId());
+        // Observers raise the refund (if money was taken) and tell the customer.
+        events.notifyObservers(BookingEvent.cancelled(saved, caller));
 
         return BookingView.of(saved);
     }
@@ -277,12 +273,7 @@ public class BookingService {
         Booking saved = bookings.save(booking);
 
         if (dateChanged || sizeChanged) {
-            notifications.email(saved.getCustomer(), "Booking " + saved.getBookingReference() + " updated",
-                    "Your booking for '" + pkg.getName() + "' has changed from " + oldSize + " traveller(s) on "
-                            + oldDate + " to " + saved.getParticipants() + " traveller(s) on " + saved.getTripDate()
-                            + ". The new total is " + saved.getTotalPrice() + ", due by "
-                            + saved.getPaymentDueDate() + ".",
-                    "Booking", saved.getId());
+            events.notifyObservers(BookingEvent.updated(saved, caller, oldDate, oldSize));
         }
 
         return BookingView.of(saved);
@@ -327,23 +318,17 @@ public class BookingService {
                     + String.join("; ", blockers) + ". Cancel it instead.");
         }
 
-        User customer = booking.getCustomer();
-        String reference = booking.getBookingReference();
-        String packageName = booking.getSafariPackage().getName();
-        Long bookingId = booking.getId();
-
+        BookingEvent removed = BookingEvent.removed(booking, caller);
         bookings.delete(booking);
-
-        notifications.email(customer, "Booking " + reference + " removed",
-                "Your unpaid booking for '" + packageName + "' has been removed and its seats released.",
-                "Booking", bookingId);
+        events.notifyObservers(removed);
     }
 
     /** Staff-driven status change (for example marking a trip completed). */
     @Transactional
-    public BookingView changeStatus(Long id, BookingStatus status) {
+    public BookingView changeStatus(Long id, BookingStatus status, User staff) {
         Booking booking = bookings.findDetailById(id)
                 .orElseThrow(() -> ApiException.notFound("Booking", id));
+        BookingStatus previous = booking.getStatus();
 
         if (booking.getStatus() == BookingStatus.CANCELLED && status != BookingStatus.CANCELLED) {
             throw ApiException.badRequest("A cancelled booking cannot be reopened.");
@@ -359,9 +344,7 @@ public class BookingService {
             booking.setCancellationReason("Cancelled by staff");
         }
         Booking saved = bookings.save(booking);
-        if (status == BookingStatus.CANCELLED) {
-            refundService.createFor(saved, "Booking cancelled by staff", null);
-        }
+        events.notifyObservers(BookingEvent.statusChanged(saved, staff, previous, null));
         return BookingView.of(saved);
     }
 

@@ -1,7 +1,8 @@
-package com.safari.tms.web;
+package com.safari.tms.controller;
 
 import com.safari.tms.domain.User;
 import com.safari.tms.domain.enums.Role;
+import com.safari.tms.dto.BookingDtos.BookingHistoryView;
 import com.safari.tms.dto.BookingDtos.BookingRequest;
 import com.safari.tms.dto.BookingDtos.BookingUpdateRequest;
 import com.safari.tms.dto.BookingDtos.BookingView;
@@ -10,6 +11,7 @@ import com.safari.tms.dto.BookingDtos.StatusChangeRequest;
 import com.safari.tms.dto.PermitDtos;
 import com.safari.tms.security.Roles;
 import com.safari.tms.service.AuthService;
+import com.safari.tms.service.BookingHistoryService;
 import com.safari.tms.service.BookingService;
 import com.safari.tms.service.PermitService;
 import jakarta.validation.Valid;
@@ -27,12 +29,14 @@ public class BookingController {
     private final BookingService bookingService;
     private final AuthService authService;
     private final PermitService permitService;
+    private final BookingHistoryService bookingHistoryService;
 
     public BookingController(BookingService bookingService, AuthService authService,
-                             PermitService permitService) {
+                             PermitService permitService, BookingHistoryService bookingHistoryService) {
         this.bookingService = bookingService;
         this.authService = authService;
         this.permitService = permitService;
+        this.bookingHistoryService = bookingHistoryService;
     }
 
     /** Staff see the whole book; customers see only their own trips. */
@@ -99,6 +103,14 @@ public class BookingController {
     @PatchMapping("/{id}/status")
     @PreAuthorize(Roles.ANY_STAFF)
     public BookingView changeStatus(@PathVariable Long id, @Valid @RequestBody StatusChangeRequest request) {
-        return bookingService.changeStatus(id, request.status());
+        return bookingService.changeStatus(id, request.status(), authService.requireCurrentUser());
+    }
+
+    /** The booking's timeline: every change, who made it and when. Ownership is checked first. */
+    @GetMapping("/{id}/history")
+    public List<BookingHistoryView> history(@PathVariable Long id) {
+        User caller = authService.requireCurrentUser();
+        bookingService.findOne(id, caller);
+        return bookingHistoryService.forBooking(id, caller);
     }
 }
