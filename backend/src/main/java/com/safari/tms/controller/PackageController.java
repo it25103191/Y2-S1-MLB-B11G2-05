@@ -1,4 +1,4 @@
-package com.safari.tms.web;
+package com.safari.tms.controller;
 
 import com.safari.tms.dto.BookingDtos.QuoteView;
 import com.safari.tms.dto.CatalogueDtos.AvailabilityView;

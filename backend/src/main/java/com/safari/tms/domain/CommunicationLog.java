@@ -55,4 +55,7 @@ public class CommunicationLog {
 
     @Column(nullable = false)
     private Instant createdAt = Instant.now();
+
+    /** Set when the author edits a manual note after posting it. */
+    private Instant editedAt;
 }
