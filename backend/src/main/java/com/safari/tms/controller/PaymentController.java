@@ -24,7 +24,7 @@ public class PaymentController {
         this.authService = authService;
     }
 
-    /** Full ledger — finance and management only. */
+
     @GetMapping
     @PreAuthorize(Roles.ANY_STAFF)
     public List<PaymentView> list() {
@@ -43,19 +43,19 @@ public class PaymentController {
         return paymentService.findOne(id);
     }
 
-    /** Payments for one booking. Customers may read their own. */
+    // Payments for one booking. Customers may read their own//
     @GetMapping("/booking/{bookingId}")
     public List<PaymentView> forBooking(@PathVariable Long bookingId) {
         return paymentService.findForBooking(bookingId, authService.requireCurrentUser());
     }
 
-    /** On-screen invoice / receipt. Customers may read their own. */
+    // On-screen invoice , Customers can  read their own. //
     @GetMapping("/invoice/{bookingId}")
     public InvoiceView invoice(@PathVariable Long bookingId) {
         return paymentService.invoice(bookingId, authService.requireCurrentUser());
     }
 
-    /** Cash, bank transfer or mobile money received by staff. Skips the card gateway entirely. */
+    //Records offline payments (cash, bank transfer, mobile money). Skips the card gateway//
     @PostMapping("/offline")
     @PreAuthorize(Roles.FINANCE)
     public ResponseEntity<PaymentResultView> recordOffline(@Valid @RequestBody OfflinePaymentRequest request) {
@@ -69,7 +69,7 @@ public class PaymentController {
         return paymentService.voidPayment(id, request.reason(), authService.requireCurrentUser());
     }
 
-    /** Only declined or timed-out attempts can be deleted. */
+
     @DeleteMapping("/{id}")
     @PreAuthorize(Roles.FINANCE)
     public ResponseEntity<Void> delete(@PathVariable Long id) {
@@ -77,10 +77,7 @@ public class PaymentController {
         return ResponseEntity.noContent().build();
     }
 
-    /**
-     * Takes a payment through the simulated gateway. A declined or timed-out attempt still returns
-     * HTTP 200 with {@code accepted=false} — it is a recorded business outcome, not a server error.
-     */
+
     @PostMapping
     public ResponseEntity<PaymentResultView> pay(@Valid @RequestBody PaymentRequest request) {
         PaymentResultView result = paymentService.process(request, authService.requireCurrentUser());

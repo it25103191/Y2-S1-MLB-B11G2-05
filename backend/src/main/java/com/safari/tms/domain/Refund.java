@@ -29,15 +29,19 @@ public class Refund {
     @JoinColumn(name = "booking_id", nullable = false)
     private Booking booking;
 
-    /** Total amount the customer had actually paid at the time the refund was calculated. */
+    //Total amount to be refunded to the customer//
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amountPaidAtRequest = BigDecimal.ZERO;
 
-    /** Amount produced by the cancellation-window policy engine. */
+   //Refund amount calculated from the cancellation policy//
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal calculatedAmount = BigDecimal.ZERO;
 
-    /** Amount a finance officer actually approved (may differ from calculated). */
+    //Adjusted refund amount before final approval//
+    @Column(precision = 12, scale = 2)
+    private BigDecimal adjustedAmount;
+
+    // Approved refund amount//
     @Column(precision = 12, scale = 2)
     private BigDecimal approvedAmount;
 
@@ -69,4 +73,3 @@ public class Refund {
     @JoinColumn(name = "processed_by_id")
     private User processedBy;
 }
-

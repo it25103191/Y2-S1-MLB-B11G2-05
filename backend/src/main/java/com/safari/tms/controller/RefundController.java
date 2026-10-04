@@ -46,7 +46,7 @@ public class RefundController {
         return refundService.findForBooking(bookingId, authService.requireCurrentUser());
     }
 
-    /** What the cancellation-window policy would award for this booking today. */
+
     @GetMapping("/quote/{bookingId}")
     public RefundQuoteView quote(@PathVariable Long bookingId) {
         return refundService.quote(bookingId, authService.requireCurrentUser());
@@ -64,7 +64,7 @@ public class RefundController {
         return refundService.update(id, request);
     }
 
-    /** Withdraws a refund that is still awaiting a decision. */
+
     @DeleteMapping("/{id}")
     @PreAuthorize(Roles.FINANCE)
     public ResponseEntity<Void> withdraw(@PathVariable Long id) {

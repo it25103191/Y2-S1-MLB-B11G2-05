@@ -1,5 +1,6 @@
 package com.safari.tms.domain;
 
+import com.safari.tms.domain.enums.Currency;
 import com.safari.tms.domain.enums.PaymentMethod;
 import com.safari.tms.domain.enums.PaymentStatus;
 import jakarta.persistence.*;
@@ -61,5 +62,30 @@ public class Payment {
 
     @Column(nullable = false)
     private Instant createdAt = Instant.now();
-}
 
+    //Optional note for offline payments ( bank slip details)//
+    @Column(length = 500)
+    private String notes;
+
+    @Column(length = 500)
+    private String voidReason;
+
+    private Instant voidedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "voided_by_id")
+    private User voidedBy;
+
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 3)
+    private Currency currency;
+
+
+    @Column(precision = 16, scale = 2)
+    private BigDecimal chargedAmount;
+
+
+    @Column(precision = 14, scale = 4)
+    private BigDecimal fxRate;
+}

@@ -19,6 +19,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
               join fetch b.customer
               join fetch b.safariPackage sp
               left join fetch p.processedBy
+              left join fetch p.voidedBy
              order by p.createdAt desc
             """)
     List<Payment> findAllDetailed();
@@ -29,6 +30,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
               join fetch b.customer
               join fetch b.safariPackage sp
               left join fetch p.processedBy
+              left join fetch p.voidedBy
              where p.id = :id
             """)
     Optional<Payment> findDetailById(@Param("id") Long id);
@@ -39,14 +41,13 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
               join fetch b.customer
               join fetch b.safariPackage sp
               left join fetch p.processedBy
+              left join fetch p.voidedBy
              where b.id = :bookingId
              order by p.createdAt desc
             """)
     List<Payment> findForBooking(@Param("bookingId") Long bookingId);
 
-    /**
-     * Sum of settled money against a booking.
-     */
+
     @Query("""
             select coalesce(sum(p.amount), 0) from Payment p
              where p.booking.id = :bookingId
@@ -62,4 +63,6 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     BigDecimal sumRevenueBetween(@Param("from") Instant from, @Param("to") Instant to);
 
     long countByStatus(PaymentStatus status);
+
+    long countByBookingId(Long bookingId);
 }
