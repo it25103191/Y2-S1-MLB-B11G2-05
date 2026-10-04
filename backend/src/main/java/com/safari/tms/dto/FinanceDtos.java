@@ -18,7 +18,7 @@ import java.util.List;
 
 public final class FinanceDtos {
 
-    /* ---------------------------------------------------------- Payments */
+
 
     public record PaymentRequest(
             @NotNull(message = "Choose a booking") Long bookingId,
@@ -29,7 +29,7 @@ public final class FinanceDtos {
 
             PaymentMethod method,
 
-            /** Mock card details — only the last four digits are ever stored. */
+
             @Pattern(regexp = "^$|^[0-9 ]{12,25}$", message = "Enter a valid card number")
             String cardNumber,
 
@@ -199,7 +199,7 @@ public final class FinanceDtos {
             @Size(max = 500) String reason) {
     }
 
-    /** Adjusts a refund that is still waiting for a finance decision. */
+
     public record RefundUpdateRequest(
             @NotNull(message = "Enter the refund amount")
             @DecimalMin(value = "0.00", message = "Amount cannot be negative")
