@@ -1,4 +1,4 @@
-package com.safari.tms.service;
+package com.safari.tms.service.backend.src.main.java.com.safari.tms.service;
 
 import com.safari.tms.domain.ReplyTemplate;
 import com.safari.tms.domain.User;
