@@ -57,4 +57,8 @@ public interface PermitRepository extends JpaRepository<Permit, Long> {
     List<Permit> findExpiringOnOrBefore(@Param("cutoff") LocalDate cutoff);
 
     long countByStatus(PermitStatus status);
+
+    long countByBookingId(Long bookingId);
+
+    boolean existsByBookingIdAndStatusIn(Long bookingId, java.util.Collection<PermitStatus> statuses);
 }
