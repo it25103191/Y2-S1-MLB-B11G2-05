@@ -14,3 +14,4 @@ public interface KpiCalculator {
 
     BigDecimal actual(Collection<YearMonth> months, ReportService.Snapshot data);
 }
+
