@@ -22,17 +22,7 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
-/**
- * Cancellation-window refund policy.
- *
- * <pre>
- *   more than 7 days before departure ... 100% of everything paid
- *   2 to 7 days before departure ........  50%
- *   inside 48 hours, or after departure .   0%
- * </pre>
- *
- * The window is measured in whole days between today and the departure date.
- */
+
 @Service
 public class RefundService {
 
@@ -58,7 +48,7 @@ public class RefundService {
         this.notifications = notifications;
     }
 
-    /* ------------------------------------------------------------- Policy */
+
 
     private record Policy(int percentage, String name, String explanation) {
     }
@@ -84,7 +74,7 @@ public class RefundService {
                 "The departure date passed " + Math.abs(daysBeforeTrip) + " day(s) ago, so no refund is due.");
     }
 
-    /* -------------------------------------------------------------- Quote */
+
 
     @Transactional(readOnly = true)
     public RefundQuoteView quote(Long bookingId, User caller) {
@@ -111,7 +101,7 @@ public class RefundService {
                 already);
     }
 
-    /* ------------------------------------------------------------ Request */
+  /
 
     @Transactional
     public RefundView request(RefundRequestBody body, User caller) {
@@ -135,10 +125,7 @@ public class RefundService {
         return RefundView.of(refunds.findDetailById(created.getId()).orElse(created));
     }
 
-    /**
-     * Raises a refund request automatically when a booking with money against it is cancelled.
-     * Returns {@code null} when nothing was paid or a refund already exists.
-     */
+
     @Transactional
     public Refund createFor(Booking booking, String reason, User actor) {
         BigDecimal paid = booking.getAmountPaid() == null ? BigDecimal.ZERO : booking.getAmountPaid();
@@ -178,7 +165,7 @@ public class RefundService {
         return saved;
     }
 
-    /* ----------------------------------------------------------- Decision */
+
 
     @Transactional
     public RefundView approve(Long id, RefundDecisionRequest request, User actor) {
@@ -237,7 +224,7 @@ public class RefundService {
         return RefundView.of(saved);
     }
 
-    /** Pays the refund out: reduces the amount held against the booking and closes the record. */
+
     @Transactional
     public RefundView process(Long id, User actor) {
         Refund refund = require(id);
@@ -254,7 +241,7 @@ public class RefundService {
         booking.setAmountPaid(newPaid.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : newPaid);
         bookings.save(booking);
 
-        // Mark settled payments as refunded once the whole balance has been returned.
+        // Mark settled payments as refunded once the whole balance has been returned//
         if (booking.getAmountPaid().compareTo(BigDecimal.ZERO) == 0) {
             payments.findForBooking(booking.getId()).stream()
                     .filter(p -> p.getStatus() == PaymentStatus.SUCCESS)
@@ -279,9 +266,7 @@ public class RefundService {
         return RefundView.of(saved);
     }
 
-    /* -------------------------------------------------------- Edit / withdraw */
 
-    /** Adjusts a refund before a decision is made. The policy figure is kept for reference. */
     @Transactional
     public RefundView update(Long id, RefundUpdateRequest request) {
         Refund refund = require(id);
@@ -327,7 +312,7 @@ public class RefundService {
                 "Refund", refund.getId());
     }
 
-    /* ------------------------------------------------------------ Queries */
+
 
     @Transactional(readOnly = true)
     public List<RefundView> findAll() {

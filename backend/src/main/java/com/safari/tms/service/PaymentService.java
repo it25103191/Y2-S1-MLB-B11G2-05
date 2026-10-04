@@ -133,7 +133,7 @@ public class PaymentService {
                 refunds.findForBooking(b.getId()).stream().map(RefundView::of).toList());
     }
 
-    /* ---------------------------------------------------------- Dashboard */
+
 
     @Transactional(readOnly = true)
     public FinanceSummaryView summary() {
@@ -248,10 +248,7 @@ public class PaymentService {
 
     /* --------------------------------------------------------------- Void */
 
-    /**
-     * Voids a successful payment: the record is kept but marked VOIDED, the money comes off the
-     * booking, and a confirmed booking drops back to pending until the balance is paid again.
-     */
+
     @Transactional
     public PaymentView voidPayment(Long id, String reason, User staff) {
         Payment payment = payments.findDetailById(id)
@@ -303,9 +300,7 @@ public class PaymentService {
         return PaymentView.of(payments.findDetailById(id).orElse(payment));
     }
 
-    /* ------------------------------------------------------------- Delete */
 
-    /** Removes a failed attempt. Declined and timed-out payments never moved money. */
     @Transactional
     public void deleteFailed(Long id) {
         Payment payment = payments.findById(id).orElseThrow(() -> ApiException.notFound("Payment", id));
@@ -316,9 +311,9 @@ public class PaymentService {
         payments.delete(payment);
     }
 
-    /* ------------------------------------------------------------ Helpers */
 
-    /** Picks the strategy for a payment method. */
+
+
     private PaymentStrategy strategyFor(PaymentMethod method) {
         return strategies.stream()
                 .filter(st -> st.supports(method))
@@ -326,14 +321,14 @@ public class PaymentService {
                 .orElseThrow(() -> ApiException.badRequest("Payments by " + method + " are not supported."));
     }
 
-    /** "LKR 414,000.00" or "USD 1,380.00": what the customer actually handed over. */
+
     private static String charged(Payment payment) {
         String code = payment.getCurrency() == null ? "USD" : payment.getCurrency().name();
         BigDecimal value = payment.getChargedAmount() == null ? payment.getAmount() : payment.getChargedAmount();
         return code + " " + String.format(java.util.Locale.US, "%,.2f", value);
     }
 
-    /** A USD ledger figure expressed in the currency and at the rate this payment used. */
+
     private static String inCurrency(BigDecimal usd, Payment payment) {
         String code = payment.getCurrency() == null ? "USD" : payment.getCurrency().name();
         BigDecimal rate = payment.getFxRate() == null ? BigDecimal.ONE : payment.getFxRate();
@@ -346,7 +341,7 @@ public class PaymentService {
         payment.setFxRate(charge.fxRate());
     }
 
-    /** Checks the booking can take this amount and returns it rounded to cents. */
+
     private BigDecimal validateChargeable(Booking booking, BigDecimal requested) {
         if (booking.getStatus() == BookingStatus.CANCELLED) {
             throw ApiException.badRequest("Booking " + booking.getBookingReference()
@@ -367,7 +362,7 @@ public class PaymentService {
         return amount;
     }
 
-    /** Adds settled money to the booking; returns true if that confirmed it. */
+
     private boolean applySettlement(Booking booking, BigDecimal amount) {
         booking.setAmountPaid(booking.getAmountPaid().add(amount));
         boolean confirmedNow = false;
