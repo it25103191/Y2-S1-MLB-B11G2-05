@@ -27,7 +27,7 @@ public final class CurrencyDtos {
         }
     }
 
-    /** Everything the SPA needs to show prices in the visitor's currency. */
+
     public record RatesView(Currency base, List<RateView> rates) {
     }
 
@@ -37,7 +37,7 @@ public final class CurrencyDtos {
             BigDecimal unitsPerUsd) {
     }
 
-    /** The currency-specific side of a payment, captured for the receipt and the audit trail. */
+
     public record Charge(Currency currency, BigDecimal chargedAmount, BigDecimal fxRate) {
     }
 

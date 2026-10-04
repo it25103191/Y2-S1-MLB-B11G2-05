@@ -41,10 +41,10 @@ public final class FinanceDtos {
             @Pattern(regexp = "^$|^[0-9]{3,4}$", message = "Enter a valid CVC")
             String cardCvc,
 
-            /** Currency shown to the customer; the charge is recorded in it. Defaults to USD. */
+
             Currency currency,
 
-            /** The amount the customer saw in {@code currency}; checked against the current rate. */
+
             BigDecimal chargedAmount) {
     }
 
@@ -112,7 +112,7 @@ public final class FinanceDtos {
         }
     }
 
-    /** Cash, bank transfer or mobile money taken by staff; never goes through the card gateway. */
+
     public record OfflinePaymentRequest(
             @NotNull(message = "Choose a booking") Long bookingId,
 
@@ -126,7 +126,7 @@ public final class FinanceDtos {
 
             @Size(max = 500) String notes,
 
-            /** Currency the money was received in, for example LKR cash at the office. */
+
             Currency currency,
 
             BigDecimal chargedAmount) {
@@ -137,7 +137,7 @@ public final class FinanceDtos {
             @Size(max = 500) String reason) {
     }
 
-    /** Result of one attempt against the simulated gateway. */
+
     public record PaymentResultView(
             boolean accepted,
             PaymentStatus status,
@@ -149,7 +149,7 @@ public final class FinanceDtos {
             BigDecimal remainingBalance) {
     }
 
-    /* ----------------------------------------------------------- Invoice */
+   //Invoice//
 
     public record InvoiceLineView(String description, int quantity, BigDecimal unitPrice, BigDecimal amount) {
     }
@@ -178,9 +178,7 @@ public final class FinanceDtos {
             List<RefundView> refunds) {
     }
 
-    /* ----------------------------------------------------------- Refunds */
 
-    /** What the cancellation policy would award right now, before anything is persisted. */
     public record RefundQuoteView(
             Long bookingId,
             String bookingReference,
@@ -213,7 +211,7 @@ public final class FinanceDtos {
     }
 
     public record RefundDecisionRequest(
-            /** Optional override of the policy amount; defaults to the calculated figure. */
+
             @DecimalMin(value = "0.00", message = "Amount cannot be negative")
             BigDecimal approvedAmount,
             @Size(max = 500) String decisionNotes) {
@@ -258,7 +256,6 @@ public final class FinanceDtos {
         }
     }
 
-    /* --------------------------------------------------------- Dashboard */
 
     public record FinanceSummaryView(
             BigDecimal collectedAllTime,
